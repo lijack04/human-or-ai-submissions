@@ -42,10 +42,36 @@ def auc_or_none(y, p):
     return float(roc_auc_score(y, p)) if len(set(y)) == 2 else None
 
 
+def plot(out):
+    groups = [(b["bin"], b["val_auc"], b["n"]) for b in out["length_bins"]] + \
+             [(f"Topic C{c['cluster']}: {', '.join(c['top_terms'][:3])}", c["val_auc"], c["n"]) for c in out["clusters"]] + \
+             [(g["group"], g["val_auc"], g["n"]) for g in out["structure"] if g["val_auc"] is not None]
+    n_len, n_top = len(out["length_bins"]), len(out["clusters"])
+    cols = ["#5c7a99"] * n_len + ["#e9a03b"] * n_top + ["#8a9a5b"] * (len(groups) - n_len - n_top)
+    fig, ax = plt.subplots(figsize=(7.5, 4.8))
+    labels = [f"{g} (n={n})" for g, _, n in groups][::-1]
+    vals = [v for _, v, _ in groups][::-1]
+    ax.barh(labels, vals, color=cols[::-1])
+    lo = min(vals) - 0.004
+    for i, v in enumerate(vals):
+        ax.text(v - 0.0002, i, f"{v:.4f}", va="center", ha="right", fontsize=8, color="white", fontweight="bold")
+    ax.axvline(out["val_auc"], color="k", ls="--", lw=1)
+    ax.text(out["val_auc"], len(vals) - 0.35, f" overall {out['val_auc']:.4f}", fontsize=8, ha="right", va="bottom")
+    ax.set_xlim(lo, 1.0005)
+    ax.set_xlabel("Validation AUROC (final model trained on 8,000 rows)")
+    ax.set_title("Validation AUROC by length bin, topic cluster and format", fontsize=11)
+    fig.tight_layout()
+    fig.savefig(ROOT / "figures" / "q4_subgroups.png", dpi=160)
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--config", default="ensemble+norm")
+    ap.add_argument("--plot-only", action="store_true", help="redraw the figure from saved results")
     args = ap.parse_args()
+    if args.plot_only:
+        plot(json.loads((ROOT / "results" / "q4_error_analysis.json").read_text()))
+        return
     tr, va = get_split()
     X, y = list(tr.text), tr.label.to_numpy()
     yv = va.label.to_numpy()
@@ -127,25 +153,7 @@ def main():
     (ROOT / "results" / "q4_error_analysis.json").write_text(json.dumps(out, indent=1, default=float))
     (ROOT / "results" / "q4_errors.md").write_text("".join(md))
 
-    # figure
-    groups = [(b["bin"], b["val_auc"], b["n"]) for b in out["length_bins"]] + \
-             [(f"C{c['cluster']}: {', '.join(c['top_terms'][:2])}", c["val_auc"], c["n"]) for c in out["clusters"]] + \
-             [(g["group"], g["val_auc"], g["n"]) for g in out["structure"] if g["val_auc"] is not None]
-    fig, ax = plt.subplots(figsize=(7, 4.6))
-    labels = [f"{g} (n={n})" for g, _, n in groups]
-    vals = [v for _, v, _ in groups]
-    cols = ["#5c7a99"] * 3 + ["#e9a03b"] * K + ["#8a9a5b"] * (len(groups) - 3 - K)
-    ax.barh(labels[::-1], vals[::-1], color=cols[::-1])
-    for i, v in enumerate(vals[::-1]):
-        ax.text(v + 0.001, i, f"{v:.3f}", va="center", fontsize=8)
-    ax.axvline(out["val_auc"], color="k", ls="--", lw=1, label=f"overall {out['val_auc']:.3f}")
-    ax.set_xlim(min(vals) - 0.03, 1.0)
-    ax.set_xlabel("Validation AUROC")
-    ax.set_title("Validation AUROC by length bin, topic cluster and structure")
-    ax.legend(loc="lower right", fontsize=8)
-    fig.tight_layout()
-    fig.savefig(ROOT / "figures" / "q4_subgroups.png", dpi=160)
-
+    plot(out)
 
 if __name__ == "__main__":
     main()
