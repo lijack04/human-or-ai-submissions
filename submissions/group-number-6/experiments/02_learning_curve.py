@@ -35,11 +35,48 @@ def chosen_params(name):
     p = comp[name]["params"]
     return {k: (tuple(v) if isinstance(v, list) else v) for k, v in p.items()}
 
+NICE = {"C_style_gbm": "Model C: stylometric features + gradient boosting",
+        "B_char_lr": "Model B: char 2-5-gram TF-IDF + logistic regression"}
+
+
+def plot(model, summary):
+    from matplotlib.ticker import NullLocator
+    ns = [s["n"] for s in summary]
+    fig, ax = plt.subplots(figsize=(6.4, 4))
+    for key, label, color, marker in [("train", "Training AUROC", "#2a6f97", "o"),
+                                       ("val", "Validation AUROC (fixed 2,000 rows)", "#d1495b", "s")]:
+        mu = np.array([s[f"{key}_auc_mean"] for s in summary])
+        sd = np.array([s[f"{key}_auc_std"] for s in summary])
+        ax.plot(ns, mu, marker=marker, color=color, label=label)
+        ax.fill_between(ns, mu - sd, mu + sd, color=color, alpha=0.15)
+        if key == "val":
+            for x, v in zip(ns, mu):
+                ax.annotate(f"{v:.3f}", (x, v), textcoords="offset points", xytext=(0, -14),
+                            ha="center", fontsize=8, color=color)
+    ax.set_xscale("log")
+    ax.xaxis.set_minor_locator(NullLocator())
+    ax.set_xticks(ns)
+    ax.set_xticklabels([f"{n:,}" for n in ns])
+    lo = min(s["val_auc_mean"] - s["val_auc_std"] for s in summary)
+    ax.set_ylim(lo - 0.01, 1.004)
+    ax.set_xlabel("Training rows (log scale)")
+    ax.set_ylabel("AUROC")
+    ax.set_title(f"{NICE.get(model, model)}\nmean \u00b1 sd over 3 random subsamples (8,000 = full partition)", fontsize=10)
+    ax.grid(alpha=0.3)
+    ax.legend(loc="lower right")
+    fig.tight_layout()
+    (ROOT / "figures").mkdir(exist_ok=True)
+    fig.savefig(ROOT / "figures" / f"q2_learning_curve_{model}.png", dpi=160)
+
 
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--model", default="C_style_gbm")
+    ap.add_argument("--plot-only", action="store_true", help="redraw the figure from saved results")
     args = ap.parse_args()
+    if args.plot_only:
+        plot(args.model, json.loads((ROOT / "results" / f"q2_learning_curve_{args.model}.json").read_text())["summary"])
+        return
     params = chosen_params(args.model)
     tr, va = get_split()
     rows = []
@@ -70,28 +107,7 @@ def main():
            "runs": rows, "summary": summary}
     (ROOT / "results" / f"q2_learning_curve_{args.model}.json").write_text(json.dumps(out, indent=1))
 
-    ns = [s["n"] for s in summary]
-    fig, ax = plt.subplots(figsize=(6.4, 4))
-    for key, label, color, marker in [("train", "Training AUROC", "#2a6f97", "o"),
-                                       ("val", "Validation AUROC (fixed 2,000 rows)", "#d1495b", "s")]:
-        mu = np.array([s[f"{key}_auc_mean"] for s in summary])
-        sd = np.array([s[f"{key}_auc_std"] for s in summary])
-        ax.plot(ns, mu, marker=marker, color=color, label=label)
-        ax.fill_between(ns, mu - sd, mu + sd, color=color, alpha=0.15)
-        for x, v in zip(ns, mu):
-            ax.annotate(f"{v:.3f}", (x, v), textcoords="offset points", xytext=(0, 7 if key == "train" else -14),
-                        ha="center", fontsize=8, color=color)
-    ax.set_xscale("log")
-    ax.set_xticks(ns)
-    ax.set_xticklabels([f"{n:,}" for n in ns])
-    ax.set_xlabel("Training rows (log scale)")
-    ax.set_ylabel("AUROC")
-    ax.set_title(f"Learning curve: {args.model} (mean ± sd over 3 subsamples)")
-    ax.grid(alpha=0.3)
-    ax.legend(loc="lower right")
-    fig.tight_layout()
-    (ROOT / "figures").mkdir(exist_ok=True)
-    fig.savefig(ROOT / "figures" / f"q2_learning_curve_{args.model}.png", dpi=160)
+    plot(args.model, summary)
     print(json.dumps(summary, indent=1))
 
 
