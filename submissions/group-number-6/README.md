@@ -3,6 +3,8 @@
 **Kaggle team name:** Group Number 6 (folder/branch slug `group-number-6`)
 **Team members:** Tejas Mutneja (tm784), Jack Li (jl4865), Sahil Dhumale (sd2329)
 
+**Report:** [`report.pdf`](report.pdf)
+
 **Final model:** an equal-weight logit average of three views of Unicode-normalised text:
 
 - **A:** word 1–3-gram TF-IDF + logistic regression
