@@ -1,7 +1,7 @@
 # Group Number 6: Human or AI?
 
 **Kaggle team name:** Group Number 6 (folder/branch slug `group-number-6`)
-**Team members:** _Name (NetID)_, _Name (NetID)_, _Name (NetID)_ (fill in)
+**Team members:** Tejas Mutneja (tm784), Jack Li (jl4865), Sahil Dhumale (sd2329)
 
 **Final model:** an equal-weight logit average of three views of Unicode-normalised text:
 
