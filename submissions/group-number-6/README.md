@@ -81,4 +81,6 @@ experiments/       one script per report section    results/ figures/  outputs u
 train.py, predict.py  entrypoints                   configs/           final and baseline configs
 ```
 
+## AI-tool disclosure
 
+We used Claude (Anthropic) as a coding assistant. It wrote the first drafts of the pipeline, the experiment scripts and the plotting code, and it proposed the robustness stress tests. The team ran the scripts and checked every reported number against `results/*.json`. We read the false positives and false negatives in `results/q4_errors.md` ourselves before writing the failure hypotheses. The team also confirmed that `submission.csv` is regenerated exactly by the commands above. No LLM API was used to label or score competition passages, and no hidden labels were retrieved from RAID or any other source.
